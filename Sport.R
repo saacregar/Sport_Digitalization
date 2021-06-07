@@ -17,6 +17,16 @@ if(!require("dplyr")) {
   library("dplyr")
 }
 
+if(!require("GGally")) {
+  install.packages("GGally")
+  library("GGally")
+}
+
+if(!require("ggthemes")) {
+  install.packages("ggthemes")
+  library("ggthemes")
+}
+
 
 # #### IMPORTACIÓN DE DATOS ####
 setwd(getwd()) #CONFIRMAR Q ASI ESTA BIEN
@@ -34,7 +44,7 @@ df$Date<-as.Date(df$Date,"%Y-%m-%d",optional=FALSE)
 df$Player.Name<-paste(df$Player.Forename,df$Player.Surname)
 
 #Añadir columna con tipo formación
-df$Formation.Type <-(df$Team.Formation=="2")*422+(df$Team.Formation=="3")*41212+
+df$Formation.Type <-(df$Team.Formation=="2")*442+(df$Team.Formation=="3")*41212+
   (df$Team.Formation=="4")*433+(df$Team.Formation=="5")*451+(df$Team.Formation=="6")*4411+
   (df$Team.Formation=="7")*4141+(df$Team.Formation=="8")*4231+(df$Team.Formation=="9")*4321+
   (df$Team.Formation=="10")*532+(df$Team.Formation=="11")*541+(df$Team.Formation=="12")*352+
@@ -55,13 +65,41 @@ str(as.factor(df$Team.Formation))
 
 # #### VISUALIZACIÓN ####
 #Goles por equipo en toda la temporada
-ggplot(df)+geom_col(aes(x=Team,y=Goals))+theme(axis.text.x=element_text(angle=90, hjust=1))
+#ggplot(df)+geom_col(aes(x=Team,y=Goals))+theme(axis.text.x=element_text(angle=90, hjust=1))
+#INCORRECTO, lo haremos haciendo group_by(Team)
 
 #Qué formaciones se usan más [NO POR PARTIDO]
 ggplot(df)+geom_bar(aes(x=Team.Formation,fill=as.factor(Formation.Type)))+scale_fill_discrete(name = "Formation Type")
 
-dfMatch<-df%>%group_by(Team,Opposition)%>%summarise(Goals)
+#partidos donde se usa Formación 442
+df442<-df[(df$Formation.Type=="442"),]
 
+
+# #### PARTIDOS ####
+#### Goles ####
+#Goals For (a favor)
+dfTeam<-df%>%group_by(Team)%>%summarise(GoalFor=sum(Goals))
+#Goals Against (en contra)
+dfOpposition<-df%>%group_by(Opposition)%>%summarise(GoalAgainst=sum(Goals))
+
+ggplot()+geom_col(data=dfTeam, aes(x=Team,y=GoalFor), fill="red")+
+  geom_col(data=dfOpposition, aes(x=Opposition,y=GoalAgainst),fill="blue",alpha=0.5)+
+  theme(axis.text.x=element_text(angle=90, hjust=1))+
+  labs(x="Team", y="Goals",title="Goals For and Against")
+
+ggplot()+ geom_point(dfTeam,aes(x=Team,y=GoalFor,size=GoalFor),shape=21)
+
+####
+
+dfMatch<-df%>%group_by(Date,Team,Opposition)%>%summarise(Result=sum(Goals))
+
+
+
+ggplot(dfMatch,aes(x=Team,y=Opposition))+geom_jitter(width=0.1,height=0.1,shape=21)+
+  theme(axis.text.x=element_text(angle=90, hjust=1))
+
+ggplot(dfMatch,aes(x=Team,y=Opposition))+geom_point(aes(size=Result),shape=21)+
+  theme(axis.text.x=element_text(angle=90, hjust=1))
 
 # #### ANÁLISIS MANCHESTER CITY, GANADOR DE LA LIGA ####
 dfCity<-df[df$Team == "Manchester City",]
