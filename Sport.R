@@ -28,8 +28,26 @@ df <- read.csv("Premier League 2011-12 Match by Match.csv", header=TRUE, sep=";"
 str(df)
 
 df<-df %>% rename("Date"="ï..Date")
+#df$Date<-as.Date(df$Date,"%Y-%m-%d")
 
 #Unir nombre y apellido de los jugadores
 df$Player.Name<-paste(df$Player.Forename,df$Player.Surname)
-df <- cbind(df, df$Player.Name)
-Data<-write.table(df)
+#comprobamos que la columna se ha creado
+colnames(df)
+
+
+# #### ANÁLISIS DESCRIPTIVO ####
+#¿Cuántos jugadores estamos analizando?
+str(as.factor(df$Player.ID))
+#¿Cuántos equipos estamos analizando?
+str(as.factor(df$Team))
+#¿Cuántas formaciones hay?
+str(as.factor(df$Team.Formation))
+
+
+# #### VISUALIZACIÓN ####
+#Goles por equipo en toda la temporada
+ggplot(df)+geom_col(aes(x=Team,y=Goals))
+
+
+
