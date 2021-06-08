@@ -79,9 +79,9 @@ str(as.factor(df$Team.Formation))
 
 # #### PARTIDOS ####
 #### Goles ####
-#Crear df de equipo de casa (Team), goles a favor
+#Crear df de equipo de casa (Team), sumar goles a favor
 dfTeam<-df%>%group_by(Team)%>%summarise(TotalGoals=sum(Goals))
-#Crear df de equipo visitante (Opposition), goles en contra
+#Crear df de equipo visitante (Opposition), sumar goles en contra
 dfOpposition<-df%>%group_by(Opposition)%>%summarise(TotalGoals=sum(Goals))
 
 # ggplot()+geom_col(data=dfTeam, mapping=aes(x=Team,y=GoalFor), fill="red")+
@@ -101,7 +101,7 @@ df2<-cbind(dfTeam,dfOpposition) #quizá eliminar, no la usamos, es mejor hacer r
 #   labs(x="Team", y="Goals",title="Goals For and Against")
 
 #Añadir columna que identifique si es equipo de casa o visitante
-#CASA=1 -> Juega en casa; CASA=2-> es visitante
+#CASA=1 -> Juega en casa; CASA=2-> es visitante --- es innecesario porque ya existe la columna Venue
 dfTeam$Casa<-rep(1,nrow(dfTeam))
 dfOpposition$Casa<-rep(2,nrow(dfOpposition))
 
@@ -110,43 +110,71 @@ dfOpposition<-dfOpposition %>% rename("Team"="Opposition")
 
 df3<-rbind(dfTeam,dfOpposition)
 
-#Goles a favor y en contra durante toda la liga, por equipos
+
+##Goles a favor y en contra durante toda la liga, por equipos
 Casa<-df3$Casa
 ggplot(df3)+geom_bar(aes(x=Team,y=TotalGoals),stat="identity",position="stack",fill=Casa)+
   theme(axis.text.x=element_text(angle=90, hjust=1))+
-  labs(x="Team", y="Goals",title="Goals For and Against")+
+  labs(x="Team", y="Goals",title="Goals For and Against (total of the season)")+
   annotate(geom="text",x=16,y=120,vjust = .5, hjust = .5,label="Black: Goals for \n Red: Goals against", size=3)
-####INTENTAR PONER FONDO A LA LEYENDA
+####INTENTAR PONER FONDO A LA LEYENDA####
 
+display.brewer.all() #ver paletas de colores
 
-####REVISAR WINNER####
-TeamWinner<-(dfTeam$TotalGoals>dfOpposition$TotalGoals)*1
-OppositionWinner<-(dfOpposition$TotalGoals>dfTeam$TotalGoals)*1
-
-dfTeamWinner<-cbind(dfTeam,TeamWinner)
-dfOppositionWinner<-cbind(dfOpposition,OppositionWinner)
-
-dfTeamWinner<-dfTeamWinner %>% rename("Winner"="TeamWinner")
-dfOppositionWinner<-dfOppositionWinner %>% rename("Winner"="OppositionWinner")
-
-dfWinners<-rbind(dfTeamWinner,dfOppositionWinner)
-# heatmap(dfWinners, Colv = NA, Rowv = NA, scale="none")
-
+##Goles marcados en cada partido jugado
 dfMatch<-df%>%group_by(Date,Team,Opposition)%>%summarise(Result=sum(Goals))
+
 dfMatch$Result<-as.factor(Result)
 ggplot(dfMatch,aes(Team,Opposition))+geom_tile(aes(fill=Result))+
-  scale_fill_gradientn(colours = colorRampPalette(rev(brewer.pal(11, 'RdYlBu')), space='Lab')(100))+
-  theme(axis.text.x=element_text(angle=90, hjust=1))+
-  labs(x="Team, home", y="Opposition, visitor",title="Goals Scored in All Matches")
-      # En este Heatmap se ve los goles que se marcaron en cada partido jugado entre dos equipos
-      # No se sabe quién ganó, solo la gantidad de goles marcados en total por ambos equipos
-
+  scale_fill_gradientn(colours = colorRampPalette(rev(brewer.pal(11, 'Spectral')), space='Lab')(100))+
+  theme_classic()+theme(axis.text.x=element_text(angle=90, hjust=1))+
+  labs(x="Team, home", y="Opposition, visitor",title="Sum of Goals Scored in All Matches")
+# En este Heatmap se ve los goles que se marcaron en cada partido jugado entre dos equipos
+# No se sabe quién ganó, solo la gantidad de goles marcados en total por ambos equipos
 
 #### intento INCORRECTO de correlograma para ver cuantos goles se hacen unos a otros
 # ggplot(dfMatch,aes(x=Team,y=Opposition))+geom_jitter(width=0.1,height=0.1,shape=21)+
 #   theme(axis.text.x=element_text(angle=90, hjust=1))
 # ggplot(dfMatch,aes(x=Team,y=Opposition))+geom_point(aes(size=Result),shape=21)+
 #   theme(axis.text.x=element_text(angle=90, hjust=1))
+
+##Ganador por partido
+dfPartidos<-df%>%group_by(Date,Team,Opposition,Venue)%>%summarise(Result=sum(Goals))
+dfPartidosHome<-dfPartidos[dfPartidos$Venue=="Home",]
+dfPartidosHome<-dfPartidosHome %>% rename("ResultHome"="Result")
+dfPartidosHome<-dfPartidosHome%>%arrange(Date,Team)
+
+dfPartidosAway<-dfPartidos[dfPartidos$Venue=="Away",]
+dfPartidosAway<-dfPartidosAway %>% rename("ResultAway"="Result")%>%rename("Team2"="Team")%>%
+  rename("Opposition2"="Opposition")%>%rename("Date2"="Date")%>%rename("Venue2"="Venue")
+dfPartidosAway<-dfPartidosAway%>%arrange(Date,Opposition)
+
+dfPartidos2<-cbind(dfPartidosHome,dfPartidosAway)
+MatchResult=(dfPartidos2$ResultHome)-(dfPartidos2$ResultAway)
+dfPartidos2$Winner<- (MatchResult>=0)*1+(MatchResult<=0)*2+(MatchResult=0)*3
+dfPartidos2$Winner<-as.factor(dfPartidos2$Winner)
+#1=Home Wins, 2=Home Loses, 3=Draw
+ggplot(dfPartidos2,aes(Team,Opposition))+geom_tile(aes(fill=Winner))+
+  theme_minimal()+theme(axis.text.x=element_text(angle=90, hjust=1))+scale_fill_brewer(labels = c("Home Wins", "Visitor Wins", "Draw"))+
+  labs(x="Team, home", y="Opposition, visitor",title="Winners of Each Match")
+
+
+####REVISAR WINNER####
+# dfTeamDate<-df%>%group_by(Team,Date)%>%summarise(TotalGoals=sum(Goals))
+# dfOppositionDate<-df%>%group_by(Opposition,Date)%>%summarise(TotalGoals=sum(Goals))
+# 
+# dfTeamDate<-dfTeamDate%>%arrange(Date)
+# dfOppositionDate<-dfOppositionDate%>%arrange(Date)
+# # TeamWinner<-(dfTeam$TotalGoals>dfOpposition$TotalGoals)*1
+# OppositionWinner<-(dfOpposition$TotalGoals>dfTeam$TotalGoals)*1
+# # dfTeamWinner<-cbind(dfTeam,TeamWinner)
+# dfOppositionWinner<-cbind(dfOpposition,OppositionWinner)
+# # dfTeamWinner<-dfTeamWinner %>% rename("Winner"="TeamWinner")
+# dfOppositionWinner<-dfOppositionWinner %>% rename("Winner"="OppositionWinner")
+# 
+# dfWinners<-rbind(dfTeamWinner,dfOppositionWinner)
+
+
 
 
 # #### ANÁLISIS MANCHESTER CITY, GANADOR DE LA LIGA ####
@@ -155,14 +183,13 @@ dfCity<-df[df$Team == "Manchester City",]
 #Goles por partido (según fecha)
 #########COMPROBAR RESULTADO, SI ES GOLES MARCADOS POR MANCHESTER O POR AMBOS!!!
 dfCity2<-df[df$Team=="Manchester City",]%>%group_by(Date,Opposition)%>%summarise(TotalGoals=sum(Goals))
-dfCity2$TeamNumber<-rep(1,nrow(dfTeam))
+#dfCity2$TeamNumber<-rep(1,1,length(dfCity2))
 Opp<-as.factor(dfCity2$Opposition)
-display.brewer.all()
+
 ggplot(dfCity2)+ geom_point(mapping=aes(x=Date,y=TotalGoals,colour=Opp,size=3),stat="identity")+
   xlab("Date")+ ylab("Goals Scored")+
   ggtitle("Goals Socored By Manchester City")+theme_bw()
-
-#HABRÍA QUE AÑADIR LEYENDA CON NUMEROS PARA CADA EUQIPO
+#HABRÍA QUE AÑADIR LEYENDA CON NUMEROS PARA CADA EUQIPO####
 
 #### Análisis Jugadores Manchester City ####
 str(as.factor(dfCity$Player.Name))
