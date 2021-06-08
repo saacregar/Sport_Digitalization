@@ -238,3 +238,31 @@ dfPenaltyGoals<-df%>%group_by(Team)%>%summarise(numPenaltisScored=sum(Penalty.Go
 sum(dfPenaltyGoals$numPenaltisScored)/sum(df$Penalties.Taken)
 #Porcentaje penaltis fallados
 sum(dfPenaltisFailed$numPenaltis)/sum(df$Penalties.Taken)
+
+
+#Córners concebidos
+dfCornersConceded1 <- df[,"Corners.Conceded"]
+dfCornersConceded1
+sum(dfCornersConceded1)
+
+#Córners al área
+dfCornersToBoxT <- df[,"Successful.Corners.into.Box"]
+dfCornersToBoxT
+sum(dfCornersToBoxT)
+
+#Córners al área fallidos
+dfCornersToBoxF <- df[,"Unsuccessful.Corners.into.Box"]
+dfCornersToBoxF
+sum(dfCornersToBoxF)
+
+#Córners sacados en corto
+dfShortCorners <- df[,"Short.Corners"]
+dfShortCorners
+sum(dfShortCorners)
+
+#Cálculo porcentajes Córners
+sum(dfCornersToBoxT)/sum(dfCornersConceded1) # % Córners al área
+sum(dfCornersToBoxF)/sum(dfCornersConceded1) # % Córners fuera del área
+sum(dfShortCorners)/sum(dfCornersConceded1)  # % Córners sacados en corto
+
+
